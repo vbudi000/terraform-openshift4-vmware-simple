@@ -41,4 +41,3 @@ data "template_file" "etcd_srv_target" {
     template = "_etcd-server-ssl._tcp.${lower(var.name)}"
 }
 
-
