@@ -1,21 +1,33 @@
-# terraform-openshift4-vmware
-Terraform to provision Openshift 4.x in VMware VMs using User Provided Infrastructure (UPI)
+# terraform-openshift4-vmware-simple
 
-In this example we provisioned Openshift 4.x in VMware using modular approach.  Two load balancers are provisioned using the [HAProxy Load Balancer](https://github.com/ibm-cloud-architecture/terraform-lb-haproxy-vmware) module, and DNS records are created using an existing DNS server (bind) and [DDNS update](https://github.com/ibm-cloud-architecture/terraform-dns-rfc2136) module.  
+Terraform to provision Openshift 4.x in VMware VMs using User Provided Infrastructure (UPI). This provisioning is using a minimal infrastructure on a flat network that is appropriate for testing or POC setup. The provisioning is focused on a bastion node that will have all the necessary tools to install and deploy the OpenShift installation. The deployment allows a variable number of master and worker nodes. You would need at least 1 each.
 
-In non-PoC and non-test scenarios, these two modules may be swapped out for manual or automated procedures that configure an external load balancer or DNS server, respectively.  Specifically, DNS update may be swapped out for [DNS zonefile](https://github.com/ibm-cloud-architecture/terraform-dns-zonefile) module for manual import, for example.
+The bastion node would run Web server, bind DNS server and HA Proxy load balancer. The OpenShift 4 components are implemented from a RedHat Core OS image created from the OVA template. This template must be created before the terraform is run. 
 
 ## Architecture
 
 Openshift 4.x using User-provided infrastructure
 
-![Openshift 4 architecture](media/openshift4-arch.png)
+![Openshift 4 architecture](media/openshift4-simple.png)
+
+## Prerequisites 
+
+1. RedHat CoreOS OVA is required, import into vSphere from [here](https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.1/latest/rhcos-4.1.0-x86_64-vmware.ova).  Import into vSphere and converted to template.
+2. A RHEL template used for bastion VM, and haproxy load-balancer.  These templates should have a valid subscription to RHEL.
+3. Existing DNS server set up to allow dynamic DNS updates from the VM that terraform runs from.
+4. Openshift pull secret, saved as a json file, from [here](https://cloud.redhat.com/openshift/install).
+
+## Terraform installation
 
 Openshift 4 has a unique bootstrap process where a bootstrap VM is initially created with a machine config server hosting the bootstrap ignition configurations for the rest of the cluster.  Our terraform procedure roughly works like:
 
-1. bastion node created, which contains a small webserver (httpd).  Base Ignition files are generated for each node type (bootstrap, master/control plane, and worker) and served through by the webserver.  These ignition files embed the initial TLS certs used to bootstrap kubelets into the Openshift cluster.
-2. control plane load balancer created in a VM forwarding traffic on port `6443` (Openshift API) and `22623` (machine config server) to the bootstrap and all control plane VMs
-3. DNS entries are created for each node (A and PTR records), and also DNS entries for the API server, etcd, and SRV records are created.
+1. bastion node created, which contain Web server (httpd), DNS server (bind) and Load Balancer (haproxy); all of these are configured and set to prepare for installation.
+	- control plane load balancer created  forwarding traffic on port `6443` (Openshift API) and `22623` (machine config server) to the bootstrap and all control plane VMs
+	- application load balancer created forwarding traffic on port `80` and `443`
+	- DNS entries are created for each node (A and PTR records), and also DNS entries for the API server, etcd, and SRV records are created.
+	- Installation and client code loaded in bastion
+	- Base Ignition files are generated for each node type (bootstrap, master, and worker) and served through by the webserver.  These ignition files embed the initial TLS certs used to bootstrap kubelets into the Openshift cluster.
+
 4. The bootstrap node is created, with an ignition file in the vApp properties that configures a static IP and hostname pointing at the bastion node to retrieve the rest of the cluster.  The bootstrap node starts the machine config server on port `22623`.
 5. The control plane nodes are also created with static IPs and hostnames pointing at the bastion node to get the rest of the control plane ignition.  That ignition points it at the control plane load balancer on port `22623`, or the machine config server that the bootstrap node starts up.
 6. The control plane receive their ignition files from the machine config server and start an etcd cluster.
@@ -25,13 +37,6 @@ Openshift 4 has a unique bootstrap process where a bootstrap VM is initially cre
 10. The bootstrap node shuts down the Openshift API components, as the control plane and worker node continue on as an Openshift cluster.
 
 Once the bootstrap node shuts down the API components, it can be removed from the load balancer and deleted.
-
-## Prerequisites 
-
-1. RedHat CoreOS OVA is required, import into vSphere from [here](https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.1/latest/rhcos-4.1.0-x86_64-vmware.ova).  Import into vSphere and converted to template.
-2. A RHEL template used for bastion VM, and haproxy load-balancer.  These templates should have a valid subscription to RHEL.
-3. Existing DNS server set up to allow dynamic DNS updates from the VM that terraform runs from.
-4. Openshift pull secret, saved as a json file, from [here](https://cloud.redhat.com/openshift/install).
 
 ## Variables
 

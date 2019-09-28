@@ -12,13 +12,11 @@ data "template_file" "rhn_register_sh" {
 }
 
 locals {
-    nodes_to_register = compact(list(local.haproxy_ip,local.bastion_ip))
+    nodes_to_register = compact(list(local.bastion_ip))
 }
 
 resource "null_resource" "rhn_register" {
     depends_on = [
-      "vsphere_virtual_machine.haproxy",
-      "vsphere_virtual_machine.haproxy_ds_cluster",
       "vsphere_virtual_machine.bastion",
       "vsphere_virtual_machine.bastion_ds_cluster"
     ]

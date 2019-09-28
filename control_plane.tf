@@ -52,7 +52,7 @@ resource "vsphere_virtual_machine" "control_plane" {
   # Network specifications
   ####
   network_interface {
-    network_id   = "${data.vsphere_network.private_network.id}"
+    network_id   = "${data.vsphere_network.network.id}"
     adapter_type = "${data.vsphere_virtual_machine.rhcos_template.network_interface_types[0]}"
   }
 
@@ -134,7 +134,7 @@ resource "vsphere_virtual_machine" "control_plane_ds_cluster" {
   # Network specifications
   ####
   network_interface {
-    network_id   = "${data.vsphere_network.private_network.id}"
+    network_id   = "${data.vsphere_network.network.id}"
     adapter_type = "${data.vsphere_virtual_machine.rhcos_template.network_interface_types[0]}"
   }
 

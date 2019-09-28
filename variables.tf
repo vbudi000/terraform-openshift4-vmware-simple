@@ -18,21 +18,10 @@ variable "worker_ip_addresses" {
 variable "dns_ip_address" {
 }
 
-variable "bastion_private_ip_address" {
-}
-
-variable "bastion_public_ip_address" {
-  default = ""
+variable "bastion_ip_address" {
 }
 
 variable "bootstrap_ip_address" {
-}
-
-variable "lb_private_ip_address" {
-}
-
-variable "lb_public_ip_address" {
-  default = ""
 }
 
 ####################################
@@ -69,13 +58,8 @@ variable "vsphere_resource_pool" {
   default     = "/"
 }
 
-variable "private_network_label" {
+variable "network_label" {
   description = "Name or label of network to provision VMs on. All VMs will be provisioned on the same network"
-}
-
-variable "public_network_label" {
-  description = "Name or label of public network to provision lbs on. All VMs will be provisioned on the same network"
-  default     = ""
 }
 
 variable "datastore" {
@@ -132,7 +116,7 @@ variable "control_plane" {
   type = map
 
   default = {
-    count  = "3"
+    count  = "1"
     vcpu   = "8"
     memory = "16384"
   }
@@ -142,7 +126,7 @@ variable "worker" {
   type = map
 
   default = {
-    count  = "3"
+    count  = "1"
     vcpu   = "8"
     memory = "16384"
   }
@@ -160,49 +144,19 @@ variable "boot_disk" {
   }
 }
 
-variable "additional_disk" {
-  type = map
-
-  default = {
-    disk_size             = "100"      # Specify size or leave empty to use same size as template.
-    thin_provisioned      = "true"      # True or false. Whether to use thin provisioning on the disk. Leave blank to use same as template
-    eagerly_scrub         = "false"      # True or false. If set to true disk space is zeroed out on VM creation. Leave blank to use same as template
-    keep_disk_on_remove   = "false" # Set to 'true' to not delete a disk on removal.
-  }
+variable "gateway" {
+  description = "Private network gateway for the newly provisioned VMs. "
 }
 
-variable "private_gateway" {
-  description = "Private network gateway for the newly provisioned VMs. Leave blank to use DHCP"
-}
-
-variable "private_netmask" {
-  description = "Netmask in CIDR notation when using static IPs. For example 16 or 24. Set to 0 to retrieve from DHCP"
-}
-
-variable "private_dns_servers" {
+variable "dns_servers" {
   description = "DNS Servers to configure on VMs"
 }
 
-variable "private_domain" {
+variable "domain" {
 }
 
-variable "public_gateway" {
-  description = "Private network gateway for the newly provisioned VMs. Leave blank to use DHCP"
-  default = ""
-}
-
-variable "public_netmask" {
+variable "netmask" {
   description = "Netmask in CIDR notation when using static IPs. For example 16 or 24. Set to 0 to retrieve from DHCP"
-  default = ""
-}
-
-variable "public_dns_servers" {
-  description = "DNS Servers to configure on VMs"
-  type = "list"
-  default = []
-}
-
-variable "public_domain" {
   default = ""
 }
 

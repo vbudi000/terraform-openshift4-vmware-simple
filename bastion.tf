@@ -1,5 +1,5 @@
 locals {
-  bastion_ip = "${element(compact(list(var.bastion_public_ip_address, var.bastion_private_ip_address)), 0)}"
+  bastion_ip = "${var.bastion_ip_address}"
 }
 
 resource "tls_private_key" "install_ssh_key" {
@@ -40,11 +40,8 @@ resource "vsphere_virtual_machine" "bastion" {
   # Network specifications
   ####
   dynamic "network_interface" {
-    for_each = compact(concat(data.vsphere_network.public_network.*.id, list(data.vsphere_network.private_network.id)))
-    content {
-      network_id   = "${network_interface.value}"
-      adapter_type = "${data.vsphere_virtual_machine.rhel_template.network_interface_types[0]}"
-    }
+    network_id   = "${data.vsphere_network.network.id}"
+    adapter_type = "${data.vsphere_virtual_machine.rhel_template.network_interface_types[0]}"
   }
 
   ####
@@ -56,21 +53,18 @@ resource "vsphere_virtual_machine" "bastion" {
     customize {
       linux_options {
         host_name = "${lower(var.name)}-bastion"
-        domain    = "${var.private_domain != "" ? var.private_domain : format("%s.local", var.name)}"
+        domain    = "${var.domain != "" ? var.domain : format("%s.local", var.name)}"
       }
 
       dynamic "network_interface" {
-        for_each = compact(concat(data.vsphere_network.public_network.*.id, list(data.vsphere_network.private_network.id)))
-        content {
-          ipv4_address = "${element(compact(list(var.bastion_public_ip_address, var.bastion_private_ip_address)), network_interface.key)}"
-          ipv4_netmask = 16
-        }
+        ipv4_address = "${var.bastion_ip_address}"
+        ipv4_netmask = "${var.netmask}"
       }
 
-      ipv4_gateway    = "${var.public_gateway != "" ? var.public_gateway : var.private_gateway}"
+      ipv4_gateway    = "${var.gateway}"
 
-      dns_server_list = "${var.private_dns_servers}"
-      dns_suffix_list = list(format("%v.%v", var.name, var.private_domain), var.private_domain)
+      dns_server_list = "${var.dns_servers}"
+      dns_suffix_list = list(format("%v.%v", var.name, var.domain), var.domain)
     }
   }
 }
@@ -110,11 +104,8 @@ resource "vsphere_virtual_machine" "bastion_ds_cluster" {
   # Network specifications
   ####
   dynamic "network_interface" {
-    for_each = compact(concat(data.vsphere_network.public_network.*.id, list(data.vsphere_network.private_network.id)))
-    content {
-      network_id   = "${network_interface.value}"
-      adapter_type = "${data.vsphere_virtual_machine.rhel_template.network_interface_types[0]}"
-    }
+    network_id   = "${data.vsphere_network.network.id}"
+    adapter_type = "${data.vsphere_virtual_machine.rhel_template.network_interface_types[0]}"
   }
 
   ####
@@ -126,68 +117,19 @@ resource "vsphere_virtual_machine" "bastion_ds_cluster" {
     customize {
       linux_options {
         host_name = "${lower(var.name)}-bastion"
-        domain    = "${var.private_domain != "" ? var.private_domain : format("%s.local", var.name)}"
+        domain    = "${var.domain != "" ? var.domain : format("%s.local", var.name)}"
       }
 
       dynamic "network_interface" {
-        for_each = compact(concat(data.vsphere_network.public_network.*.id, list(data.vsphere_network.private_network.id)))
-        content {
-          ipv4_address = "${element(compact(list(var.bastion_private_ip_address)), network_interface.key)}"
-          ipv4_netmask = 16
-        }
+        ipv4_address = "${var.bastion_ip_address}"
+        ipv4_netmask = "${var.netmask}"
       }
 
-      ipv4_gateway    = "${var.public_gateway != "" ? var.public_gateway : var.private_gateway}"
+      ipv4_gateway    = "${var.gateway}"
 
-      dns_server_list = "${var.private_dns_servers}"
-      dns_suffix_list = list(format("%v.%v", var.name, var.private_domain), var.private_domain)
+      dns_server_list = "${var.dns_servers}"
+      dns_suffix_list = list(format("%v.%v", var.name, var.domain), var.domain)
     }
-  }
-}
-
-resource "null_resource" "openshift_installer" {
-  depends_on = [
-    "vsphere_virtual_machine.bastion",
-    "vsphere_virtual_machine.bastion_ds_cluster"
-  ]
-  
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "set -e",
-      "wget -r -l1 -np -nd https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ -P /tmp -A 'openshift-install-linux-4*.tar.gz'",
-      "tar zxvf /tmp/openshift-install-linux-4*.tar.gz -C /tmp",
-    ]
-  }
-}
-
-resource "null_resource" "openshift_client" {
-  depends_on = [
-    "vsphere_virtual_machine.bastion",
-    "vsphere_virtual_machine.bastion_ds_cluster"
-  ]
-
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "set -e",
-      "wget -r -l1 -np -nd https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/ -P /tmp -A 'openshift-client-linux-4*.tar.gz'",
-      "sudo tar zxvf /tmp/openshift-client-linux-4*.tar.gz -C /usr/local/bin",
-    ]
   }
 }
 
@@ -216,8 +158,6 @@ resource "null_resource" "set_systemclock_utc" {
 
 resource "null_resource" "install_httpd" {
   depends_on = [
-    "vsphere_virtual_machine.bastion",
-    "vsphere_virtual_machine.bastion_ds_cluster",
     "null_resource.rhn_register"
   ]
 
@@ -241,8 +181,7 @@ resource "null_resource" "install_httpd" {
 
 resource "null_resource" "open_ports_firewalld" {
   depends_on = [
-    "vsphere_virtual_machine.bastion",
-    "vsphere_virtual_machine.bastion_ds_cluster"
+    "null_resource.set_systemclock_utc"
   ]
  
   connection {
@@ -256,70 +195,15 @@ resource "null_resource" "open_ports_firewalld" {
   provisioner "remote-exec" {
     when = "create"
     inline = [
-      "sudo firewall-cmd --zone=public --add-port=80/tcp",
-      "sudo firewall-cmd --zone=public --add-port=80/tcp --permanent"
+      "sudo firewall-cmd --zone=public --add-port=88/tcp",
+      "sudo firewall-cmd --zone=public --add-port=88/tcp --permanent"
     ]
   }
-}
-
-data "template_file" "install_config_yaml" {
-  template = <<EOF
-apiVersion: v1
-baseDomain: ${var.private_domain}
-compute:
-- hyperthreading: Enabled
-  name: worker
-  replicas: 0
-controlPlane:
-  hyperthreading: Enabled
-  name: master
-  replicas: ${var.control_plane["count"]}
-metadata:
-  name: ${var.name}
-networking:
-  clusterNetworks:
-  - cidr: ${var.cluster_network_cidr}
-    hostPrefix: ${var.host_prefix}
-  networkType: OpenShiftSDN
-  serviceNetwork:
-  - ${var.service_network_cidr}
-platform:
-  none: {}
-pullSecret: '${file(var.openshift_pull_secret)}'
-sshKey: '${tls_private_key.install_ssh_key.public_key_openssh}'  
-EOF
-}
-
-resource "null_resource" "write_install_config" {
-  depends_on = [
-    "null_resource.install_httpd"
-  ]
-
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "file" {
-    content     = "${data.template_file.install_config_yaml.rendered}"
-    destination = "/tmp/install-config.yaml"
-  }
-  
-  provisioner "remote-exec" {
-    inline = [
-      "sudo cp /tmp/install-config.yaml /var/www/html"
-    ]
-  }
-
 }
 
 resource "null_resource" "write_ssh_key" {
   depends_on = [
-    "vsphere_virtual_machine.bastion",
-    "vsphere_virtual_machine.bastion_ds_cluster"
+    "null_resource.set_systemclock_utc"
   ]
  
   connection {
@@ -342,108 +226,3 @@ resource "null_resource" "write_ssh_key" {
   }
 }
 
-resource "null_resource" "generate_ignition_config" {
-  depends_on = [
-    "null_resource.write_install_config",
-    "null_resource.openshift_installer"
-  ]
-
-  triggers = {
-    ignition_config = "${data.template_file.install_config_yaml.rendered}"
-  }
-
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "file" {
-    content     = "${data.template_file.install_config_yaml.rendered}"
-    destination = "/tmp/install-config.yaml"
-  }
-  
-  provisioner "remote-exec" {
-    inline = [
-      "sudo cp /tmp/install-config.yaml /var/www/html",
-      "sudo /tmp/openshift-install --dir=/var/www/html create ignition-configs",
-      "sudo sed -i 's/https:/http:/g' /var/www/html/master.ign",
-      "sudo sed -i 's/https:/http:/g' /var/www/html/worker.ign",
-      "sudo sed -i 's/api-int.${var.name}.${var.private_domain}:22623/${var.bootstrap_ip_address}:22624/g' /var/www/html/master.ign",
-      "sudo sed -i 's/api-int.${var.name}.${var.private_domain}:22623/${var.bootstrap_ip_address}:22624/g' /var/www/html/worker.ign"
-    ]
-  }
-}
-
-resource "null_resource" "wait_for_bootstrap_complete" {
-  depends_on = [
-    "vsphere_virtual_machine.bootstrap",
-    "vsphere_virtual_machine.bootstrap_ds_cluster",
-    "vsphere_virtual_machine.control_plane",
-    "vsphere_virtual_machine.control_plane_ds_cluster",
-    "null_resource.generate_ignition_config",
-    "null_resource.openshift_installer"
-  ]
-
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo /tmp/openshift-install --dir=/var/www/html wait-for bootstrap-complete --log-level debug"
-    ]
-  }
-}
-
-resource "null_resource" "patch_registry_storage" {
-  depends_on = [
-    "null_resource.wait_for_bootstrap_complete",
-    "null_resource.openshift_client"
-  ]
-
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "echo \"/usr/local/bin/oc --kubeconfig=/var/www/html/auth/kubeconfig get configs.imageregistry.operator.openshift.io cluster\" > /tmp/check.sh",
-      "chmod u+x /tmp/check.sh",
-      "while [ ! /tmp/check.sh ]; do sleep 1; done",
-      "/usr/local/bin/oc --kubeconfig=/var/www/html/auth/kubeconfig patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{\"spec\":{\"storage\":{\"emptyDir\":{}}}}'"
-    ]
-  }
-}
-
-resource "null_resource" "wait_for_install_complete" {
-  depends_on = [
-    "null_resource.patch_registry_storage",
-    "null_resource.openshift_installer",
-    "null_resource.patch_registry_storage"
-  ]
-
-  connection {
-    type        = "ssh"
-    host        = "${local.bastion_ip}"
-    user        = "${var.ssh_user}"
-    password    = "${var.ssh_password}"
-    private_key = "${file(var.ssh_private_key_file)}"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "sudo /tmp/openshift-install --dir=/var/www/html wait-for install-complete --log-level debug"
-    ]
-  }
-}

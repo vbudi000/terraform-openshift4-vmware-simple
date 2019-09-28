@@ -40,15 +40,9 @@ data "vsphere_resource_pool" "pool" {
   datacenter_id = "${data.vsphere_datacenter.dc.id}"
 }
 
-data "vsphere_network" "private_network" {
-  name          = "${var.private_network_label}"
+data "vsphere_network" "network" {
+  name          = "${var.network_label}"
   datacenter_id = "${data.vsphere_datacenter.dc.id}"
-}
-
-data "vsphere_network" "public_network" {
-  count         = var.public_network_label != "" ? 1 : 0
-  name          = var.public_network_label
-  datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 # Create a folder

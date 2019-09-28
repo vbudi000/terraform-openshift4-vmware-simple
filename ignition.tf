@@ -1,8 +1,8 @@
 locals {
-  mask        = "${element(split("/",var.private_netmask),2)}"
-  gw          = "${var.private_gateway}"
+  mask        = "${var.netmask}"
+  gw          = "${var.gateway}"
 
-  ignition_url = "${var.ignition_url != "" ? "${var.ignition_url}" : "http://${var.bastion_private_ip_address}" }"
+  ignition_url = "${var.ignition_url != "" ? "${var.ignition_url}" : "http://${var.bastion_ip_address}:88" }"
 }
 
 data "ignition_file" "bootstrap_hostname" {
@@ -11,7 +11,7 @@ data "ignition_file" "bootstrap_hostname" {
   mode       = "420"
 
   content {
-    content = "${var.name}-bootstrap.${var.name}.${lower(var.private_domain)}"
+    content = "${var.name}-bootstrap.${var.name}.${lower(var.domain)}"
   }
 }
 
@@ -32,9 +32,9 @@ ONBOOT=yes
 IPADDR=${var.bootstrap_ip_address}
 PREFIX=${local.mask}
 GATEWAY=${local.gw}
-DOMAIN=${lower(var.name)}.${var.private_domain}
-DNS1=${var.dns_ip_address}
-SEARCH="${lower(var.name)}.${lower(var.private_domain)} ${lower(var.private_domain)}"
+DOMAIN=${lower(var.name)}.${var.domain}
+DNS1=${var.bastion_ip_address}
+SEARCH="${lower(var.name)}.${lower(var.domain)} ${lower(var.domain)}"
 EOF
   }
 }
@@ -47,7 +47,7 @@ data "ignition_file" "control_plane_hostname" {
   mode       = "420"
 
   content {
-    content  = "${element(data.template_file.control_plane_hostname.*.rendered, count.index)}.${lower(var.name)}.${lower(var.private_domain)}"
+    content  = "${element(data.template_file.control_plane_hostname.*.rendered, count.index)}.${lower(var.name)}.${lower(var.domain)}"
   }
 }
 
@@ -69,9 +69,9 @@ ONBOOT=yes
 IPADDR=${element(var.control_plane_ip_addresses, count.index)}
 PREFIX=${local.mask}
 GATEWAY=${local.gw}
-DOMAIN=${lower(var.name)}.${var.private_domain}
-DNS1=${var.dns_ip_address}
-SEARCH="${lower(var.name)}.${lower(var.private_domain)} ${lower(var.private_domain)}"
+DOMAIN=${lower(var.name)}.${var.domain}
+DNS1=${var.bastion_ip_address}
+SEARCH="${lower(var.name)}.${lower(var.domain)} ${lower(var.domain)}"
 EOF
   }
 }
@@ -83,8 +83,8 @@ data "ignition_file" "resolv_conf" {
 
   content {
     content  = <<EOF
-nameserver ${var.dns_ip_address}
-search ${var.name}.${var.private_domain}
+nameserver ${var.bastion_ip_address}
+search ${var.name}.${var.domain}
 EOF
   }
 }
@@ -98,7 +98,7 @@ data "ignition_file" "worker_hostname" {
   mode       = "420"
 
   content {
-    content  = "${element(data.template_file.worker_hostname.*.rendered, count.index)}.${lower(var.name)}.${lower(var.private_domain)}"
+    content  = "${element(data.template_file.worker_hostname.*.rendered, count.index)}.${lower(var.name)}.${lower(var.domain)}"
   }
 }
 
@@ -120,9 +120,9 @@ ONBOOT=yes
 IPADDR=${element(var.worker_ip_addresses, count.index)}
 PREFIX=${local.mask}
 GATEWAY=${local.gw}
-DOMAIN=${lower(var.name)}.${var.private_domain}
-DNS1=${var.dns_ip_address}
-SEARCH="${lower(var.name)}.${lower(var.private_domain)} ${lower(var.private_domain)}"
+DOMAIN=${lower(var.name)}.${var.domain}
+DNS1=${var.bastion_ip_address}
+SEARCH="${lower(var.name)}.${lower(var.domain)} ${lower(var.domain)}"
 EOF
   }
 }
