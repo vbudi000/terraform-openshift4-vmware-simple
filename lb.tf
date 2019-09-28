@@ -22,9 +22,8 @@ resource "null_resource" "install_haproxy" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo subscription-manager repos --enable='rhel-7-server-rpms'",
       "sudo yum install -y haproxy",
-      "sudo systemctl enable haproxy",
+      "sudo systemctl enable haproxy"
     ]
   }
 }

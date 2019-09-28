@@ -171,7 +171,6 @@ resource "null_resource" "install_httpd" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo subscription-manager repos --enable='rhel-7-server-rpms'",
       "sudo yum install -y httpd",
       "sudo systemctl enable httpd",
       "sudo systemctl start httpd"

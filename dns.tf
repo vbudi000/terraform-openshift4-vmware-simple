@@ -56,7 +56,6 @@ resource "null_resource" "install_bind" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo subscription-manager repos --enable='rhel-7-server-rpms'",
       "sudo yum install -y bind bind-utils",
       "sudo systemctl enable named",
       "sudo systemctl start named"
