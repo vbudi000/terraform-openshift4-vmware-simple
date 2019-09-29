@@ -88,98 +88,23 @@ resource "null_resource" "open_ports_firewalld_bind" {
 }
 
 locals {
-  ip_addrs = var.datastore_cluster_id == "" ? vsphere_virtual_machine.bind.0.guest_ip_addresses : vsphere_virtual_machine.bind_ds_cluster.0.guest_ip_addresses
+  ip_addrs = var.datastore_cluster == "" ? vsphere_virtual_machine.bastion.0.guest_ip_addresses : vsphere_virtual_machine.bastion_ds_cluster.0.guest_ip_addresses
   bind_ip = local.bastion_ip
 
   # assume the default reverse zone is a Class C
-  default_reverse_zone = "${format("%s.in-addr.arpa", join(".", reverse(slice(split(".", var.ip_address), 0, 3))))}"
+  default_reverse_zone = "${format("%s.in-addr.arpa", join(".", reverse(slice(split(".", var.dns_ip_address), 0, 3))))}"
 
-  reverse_zone = var.reverse_zone != "" ? var.reverse_zone : local.default_reverse_zone
+  reverse_zone = local.default_reverse_zone
+  forward_zone = "${var.name}.${var.domain}"
+
 }
 
-
-resource "null_resource" "subscription" {
-    count = "${var.rhn_username != "" ? 1 : 0}"
-
-    depends_on = [ 
-        "module.rhnregister.registered_resource"
-    ]
-    
-    connection {
-        host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
-    }
-
-    provisioner "remote-exec" {
-        when = "create"
-        inline = [
-            "sudo subscription-manager repos --disable='*'",
-            "sudo subscription-manager repos --enable='rhel-7-server-rpms'",
-        ]
-    }
-}
-
-resource "null_resource" "install_bind" {
-    depends_on = [ 
-        "null_resource.subscription"
-    ]
-
-    connection {
-        host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
-    }
-
-    provisioner "remote-exec" {
-        when = "create"
-        inline = [
-            "sudo yum -y install bind bind-utils",
-        ]
-    }
-}
-
-resource "null_resource" "open_ports_firewalld" {
-    connection {
-        host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
-    }
-
-    provisioner "remote-exec" {
-        when = "create"
-        inline = [
-            "sudo firewall-cmd --zone=public --add-port=53/udp",
-            "sudo firewall-cmd --zone=public --add-port=53/udp --permanent",
-            "sudo firewall-cmd --zone=public --add-port=53/tcp",
-            "sudo firewall-cmd --zone=public --add-port=53/tcp --permanent"
-        ]
-    }
-}
 
 data "template_file" "named_conf_rndc_key" {
     template = <<EOF
-key "${var.rndc_key_name}" {
-	algorithm ${var.rndc_key_algorithm};
-	secret "${var.rndc_key_secret}";
+key "${var.dns_key_name}" {
+	algorithm ${var.dns_key_algorithm};
+	secret "${var.dns_key_secret}";
 };
 EOF
 }
@@ -230,10 +155,10 @@ EOF
 
 data "template_file" "named_conf_forward_zone" {
 	template = <<EOF
-zone "${var.forward_zone}" {
+zone "${local.forward_zone}" {
 	type master;
-	file "/var/named/db.${var.forward_zone}";
-	allow-update { key "${var.rndc_key_name}"; };
+	file "/var/named/db.${local.forward_zone}";
+	allow-update { key "${var.dns_key_name}"; };
 	notify yes;
     forwarders {};
 };
@@ -245,7 +170,7 @@ data "template_file" "named_conf_reverse_zone" {
 zone "${local.reverse_zone}" {
 	type master;
 	file "/var/named/db.${local.reverse_zone}";
-	allow-update { key "${var.rndc_key_name}"; };
+	allow-update { key "${var.dns_key_name}"; };
 	notify yes;
     forwarders {};
 };
@@ -267,15 +192,11 @@ resource "null_resource" "named_conf" {
     }
 
     connection {
+        type        = "ssh"
         host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
+        user          = "${var.ssh_user}"
+        password      = "${var.ssh_password}"
+        private_key   = "${file(var.ssh_private_key_file)}"
     }
 
     provisioner "file" {
@@ -304,16 +225,16 @@ EOF
 data "template_file" "forward_zone_file" {
 # put myself as "ns.<forward_zone" but nothing else
 	template = <<EOF
-$ORIGIN ${var.forward_zone}.
+$ORIGIN ${local.forward_zone}.
 $TTL 86400
-@         IN  SOA  ns.${var.forward_zone}.  hostmaster.${var.forward_zone}. (
+@         IN  SOA  ns.${local.forward_zone}.  hostmaster.${local.forward_zone}. (
               2001062501  ; serial
               21600       ; refresh after 6 hours
               3600        ; retry after 1 hour
               604800      ; expire after 1 week
               86400 )     ; minimum TTL of 1 day
-          IN  NS  ns.${var.forward_zone}.
-ns        IN  A   ${var.ip_address}
+          IN  NS  ns.${local.forward_zone}.
+ns        IN  A   ${var.dns_ip_address}
 EOF
 }
 
@@ -322,16 +243,16 @@ data "template_file" "reverse_zone_file" {
 	template = <<EOF
 $ORIGIN ${local.reverse_zone}.
 $TTL 86400
-@  IN  SOA  ns.${var.forward_zone}.  hostmaster.${var.forward_zone}. (
+@  IN  SOA  ns.${local.forward_zone}.  hostmaster.${local.forward_zone}. (
        2001062501  ; serial
        21600       ; refresh after 6 hours
        3600        ; retry after 1 hour
        604800      ; expire after 1 week
        86400 )     ; minimum TTL of 1 day
 ;
-@  NS   ns.${var.forward_zone}.
+@  NS   ns.${local.forward_zone}.
 ;
-${element(split(".", var.ip_address), 3)}   IN  PTR  ns.${var.forward_zone}.
+${element(split(".", var.dns_ip_address), 3)}   IN  PTR  ns.${local.forward_zone}.
 
 EOF
 }
@@ -346,29 +267,25 @@ resource "null_resource" "forward_zone_file" {
     }
 
     connection {
+        type        = "ssh"
         host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
+        user          = "${var.ssh_user}"
+        password      = "${var.ssh_password}"
+        private_key   = "${file(var.ssh_private_key_file)}"
     }
 
     provisioner "file" {
         content     = <<EOF
 ${data.template_file.forward_zone_file.rendered}
 EOF
-        destination = "/tmp/db.${var.forward_zone}"
+        destination = "/tmp/db.${local.forward_zone}"
     }
 
     provisioner "remote-exec" {
         inline = [
-            "sudo mv /tmp/db.${var.forward_zone} /var/named/db.${var.forward_zone}",
-			"sudo chown root:named /var/named/db.${var.forward_zone}",
-            "sudo chmod 640 /var/named/db.${var.forward_zone}",
+            "sudo mv /tmp/db.${local.forward_zone} /var/named/db.${local.forward_zone}",
+			"sudo chown root:named /var/named/db.${local.forward_zone}",
+            "sudo chmod 640 /var/named/db.${local.forward_zone}",
             "sudo named-checkconf -z /etc/named.conf"
         ]
     }
@@ -384,15 +301,11 @@ resource "null_resource" "reverse_zone_file" {
     }
 
     connection {
+        type        = "ssh"
         host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
+        user          = "${var.ssh_user}"
+        password      = "${var.ssh_password}"
+        private_key   = "${file(var.ssh_private_key_file)}"
     }
 
     provisioner "file" {
@@ -420,15 +333,11 @@ resource "null_resource" "start_named" {
     ]
 
     connection {
+        type        = "ssh"
         host          = "${local.bind_ip}"
-        user          = "${var.template_ssh_user}"
-        password      = "${var.template_ssh_password}"
-        private_key   = "${var.template_ssh_private_key}"
-
-        bastion_host         = "${var.bastion_ip_address}"
-        bastion_user         = "${var.bastion_ssh_user}"
-        bastion_password     = "${var.bastion_ssh_password}"
-        bastion_private_key  = "${var.bastion_ssh_private_key}"
+        user          = "${var.ssh_user}"
+        password      = "${var.ssh_password}"
+        private_key   = "${file(var.ssh_private_key_file)}"
     }
 
     provisioner "file" {

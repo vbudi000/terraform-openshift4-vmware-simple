@@ -39,7 +39,7 @@ resource "vsphere_virtual_machine" "bastion" {
   ####
   # Network specifications
   ####
-  dynamic "network_interface" {
+  network_interface {
     network_id   = "${data.vsphere_network.network.id}"
     adapter_type = "${data.vsphere_virtual_machine.rhel_template.network_interface_types[0]}"
   }
@@ -56,7 +56,7 @@ resource "vsphere_virtual_machine" "bastion" {
         domain    = "${var.domain != "" ? var.domain : format("%s.local", var.name)}"
       }
 
-      dynamic "network_interface" {
+      network_interface {
         ipv4_address = "${var.bastion_ip_address}"
         ipv4_netmask = "${var.netmask}"
       }
@@ -103,7 +103,7 @@ resource "vsphere_virtual_machine" "bastion_ds_cluster" {
   ####
   # Network specifications
   ####
-  dynamic "network_interface" {
+  network_interface {
     network_id   = "${data.vsphere_network.network.id}"
     adapter_type = "${data.vsphere_virtual_machine.rhel_template.network_interface_types[0]}"
   }
@@ -120,7 +120,7 @@ resource "vsphere_virtual_machine" "bastion_ds_cluster" {
         domain    = "${var.domain != "" ? var.domain : format("%s.local", var.name)}"
       }
 
-      dynamic "network_interface" {
+      network_interface {
         ipv4_address = "${var.bastion_ip_address}"
         ipv4_netmask = "${var.netmask}"
       }

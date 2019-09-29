@@ -144,6 +144,17 @@ variable "boot_disk" {
   }
 }
 
+variable "additional_disk" {
+  type = map
+
+  default = {
+    disk_size             = "100"      # Specify size or leave empty to use same size as template.
+    thin_provisioned      = "true"      # True or false. Whether to use thin provisioning on the disk. Leave blank to use same as template
+    eagerly_scrub         = "false"      # True or false. If set to true disk space is zeroed out on VM creation. Leave blank to use same as template
+    keep_disk_on_remove   = "false" # Set to 'true' to not delete a disk on removal.
+  }
+}
+
 variable "gateway" {
   description = "Private network gateway for the newly provisioned VMs. "
 }
@@ -232,4 +243,9 @@ variable "backend" {
         "443" = "",
         "80" = ""
     }
+}
+
+variable "upstream_dns_servers" {
+  description = "upstream DNS Servers"
+  default     = ["8.8.8.8", "8.8.4.4"]
 }

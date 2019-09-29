@@ -17,4 +17,4 @@ subscription-manager register --username=${rhel_user_name} --password=${rhel_pas
 subscription-manager refresh
 subscription-manager attach --pool=${subscription_pool}
 subscription-manager repos --disable="*"
-
+subscription-manager repos --enable='rhel-7-server-rpms'
