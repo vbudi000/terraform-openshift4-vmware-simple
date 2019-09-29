@@ -173,6 +173,7 @@ resource "null_resource" "install_httpd" {
     inline = [
       "sudo yum install -y httpd",
       "sed -i 's/Listen 80/Listen 1080/' /etc/httpd/conf/httpd.conf",
+      "semanage port -a -t http_port_t -p tcp 1080",
       "sudo systemctl enable httpd",
       "sudo systemctl start httpd"
     ]

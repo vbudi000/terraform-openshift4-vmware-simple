@@ -2,7 +2,7 @@ locals {
   mask        = "${var.netmask}"
   gw          = "${var.gateway}"
 
-  ignition_url = "${var.ignition_url != "" ? "${var.ignition_url}" : "http://${var.bastion_ip_address}:88" }"
+  ignition_url = "${var.ignition_url != "" ? "${var.ignition_url}" : "http://${var.bastion_ip_address}:1080" }"
 }
 
 data "ignition_file" "bootstrap_hostname" {
