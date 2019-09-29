@@ -63,7 +63,7 @@ resource "vsphere_virtual_machine" "bastion" {
 
       ipv4_gateway    = "${var.gateway}"
 
-      dns_server_list = "${var.dns_servers}"
+      dns_server_list = "${var.upstream_dns_servers}"
       dns_suffix_list = list(format("%v.%v", var.name, var.domain), var.domain)
     }
   }
@@ -127,7 +127,7 @@ resource "vsphere_virtual_machine" "bastion_ds_cluster" {
 
       ipv4_gateway    = "${var.gateway}"
 
-      dns_server_list = "${var.dns_servers}"
+      dns_server_list = "${var.upstream_dns_servers}"
       dns_suffix_list = list(format("%v.%v", var.name, var.domain), var.domain)
     }
   }
@@ -172,6 +172,7 @@ resource "null_resource" "install_httpd" {
   provisioner "remote-exec" {
     inline = [
       "sudo yum install -y httpd",
+      "sed -i 's/Listen 80/Listen 1080/' /etc/httpd/conf/httpd.conf"
       "sudo systemctl enable httpd",
       "sudo systemctl start httpd"
     ]
@@ -194,8 +195,8 @@ resource "null_resource" "open_ports_firewalld" {
   provisioner "remote-exec" {
     when = "create"
     inline = [
-      "sudo firewall-cmd --zone=public --add-port=88/tcp",
-      "sudo firewall-cmd --zone=public --add-port=88/tcp --permanent"
+      "sudo firewall-cmd --zone=public --add-port=1080/tcp",
+      "sudo firewall-cmd --zone=public --add-port=1080/tcp --permanent"
     ]
   }
 }
