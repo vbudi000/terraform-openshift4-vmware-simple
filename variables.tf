@@ -159,10 +159,6 @@ variable "gateway" {
   description = "Private network gateway for the newly provisioned VMs. "
 }
 
-variable "dns_servers" {
-  description = "DNS Servers to configure on VMs"
-}
-
 variable "domain" {
 }
 

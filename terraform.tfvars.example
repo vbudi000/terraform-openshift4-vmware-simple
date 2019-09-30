@@ -1,0 +1,52 @@
+name = "ocp41"
+domain = "example.com"
+openshift_pull_secret = "./openshift_pull_secret.json"
+
+vsphere_server = "10.1.212.26"
+vsphere_datacenter = "DC01"
+vsphere_cluster = "Cluster01"
+vsphere_resource_pool = "myVMpool"
+network_label = "VMNetwork"
+datastore_cluster = "DataStoreCluster"
+folder = "/Sandbox/ocp41"
+
+rhcos_template = "Sandbox/templates/rhcos-4.1.0-x86_64-vmware"
+rhel_template = "Sandbox/templates/RHEL7"
+ssh_user = "root"
+ssh_password = "templatepassword"
+
+rhn_username = "me@example.com"
+rhn_password = "PASSWORD"
+rhn_poolid   = "abcdefabcdefabcdefabcdefabcdef01"
+
+dns_key_name = "ocp41.example.com."
+dns_key_algorithm = "hmac-md5"
+dns_key_secret = "mysecret"
+
+bastion_ip_address = "172.16.54.160"
+bootstrap_ip_address = "172.16.54.171"
+control_plane_ip_addresses = ["172.16.54.162" ]
+worker_ip_addresses = ["172.16.54.165" ]
+gateway = "172.16.255.250"
+netmask = "16"
+upstream_dns_servers = ["1.1.1.1"]
+dns_ip_address = 172.16.54.160
+
+control_plane = {
+    count = "1"
+    vcpu = "8"
+    memory = "16384"
+}
+
+worker = {
+    count = "1"
+    vcpu = "8"
+    memory = "16384"
+}
+
+boot_disk = {
+    disk_size = "200"
+    thin_provisioned = "true"
+    keep_disk_on_remove = false
+    eagerly_scrub = false
+}
