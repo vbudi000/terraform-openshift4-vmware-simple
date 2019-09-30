@@ -15,9 +15,6 @@ variable "worker_ip_addresses" {
   default = []
 }
 
-variable "dns_ip_address" {
-}
-
 variable "bastion_ip_address" {
 }
 

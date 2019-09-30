@@ -63,7 +63,7 @@ resource "vsphere_virtual_machine" "bastion" {
 
       ipv4_gateway    = "${var.gateway}"
 
-      dns_server_list = concat(list(var.dns_ip_address),var.upstream_dns_servers)
+      dns_server_list = concat(list(var.bastion_ip_address),var.upstream_dns_servers)
       dns_suffix_list = list(format("%v.%v", var.name, var.domain), var.domain)
     }
   }
@@ -127,7 +127,7 @@ resource "vsphere_virtual_machine" "bastion_ds_cluster" {
 
       ipv4_gateway    = "${var.gateway}"
 
-      dns_server_list = concat(list(var.dns_ip_address),var.upstream_dns_servers)
+      dns_server_list = concat(list(var.bastion_ip_address),var.upstream_dns_servers)
       dns_suffix_list = list(format("%v.%v", var.name, var.domain), var.domain)
     }
   }

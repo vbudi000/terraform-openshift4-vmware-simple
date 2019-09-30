@@ -30,7 +30,6 @@ worker_ip_addresses = ["172.16.54.165" ]
 gateway = "172.16.255.250"
 netmask = "16"
 upstream_dns_servers = ["1.1.1.1"]
-dns_ip_address = 172.16.54.160
 
 control_plane = {
     count = "1"

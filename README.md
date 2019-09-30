@@ -42,7 +42,7 @@ The control plane receive their ignition files from the machine config server an
 
 Configuring the deployment is performed from the `terraform.tfvars` file. Copy the terraform.tfvars.example and customize that including to the following sections:
 
-- OpenShift 4 deployment names and download token
+- OpenShift 4 deployment names and download token. All names in an OpenShift 4 cluster are qualified as `<name>.<domain>`; the file you download from RedHat is listed here.
 
 ```
 name = "ocp41"
@@ -50,7 +50,7 @@ domain = "example.com"
 openshift_pull_secret = "./openshift_pull_secret.json"
 ```
 
-- vSphere resources
+- vSphere resources, all these resources except for the folder should already existed. If you already have the folder, you can import it using `terraform import vsphere_folder.ocpenv /DC01/vm/Sandbox/ocp41`.
 
 ```
 vsphere_server = "10.1.212.26"
@@ -62,7 +62,7 @@ datastore_cluster = "DataStoreCluster"
 folder = "/Sandbox/ocp41"
 ```
 
-- vSphere templates information
+- vSphere templates information and the credential to access the RHEL template (RHCOS credential is buried in the ignition file)
 
 ```
 rhcos_template = "Sandbox/templates/rhcos-4.1.0-x86_64-vmware"
@@ -79,14 +79,14 @@ rhn_password = "PASSWORD"
 rhn_poolid   = "abcdefabcdefabcdefabcdefabcdef01"
 ```
 
-- DNS bind update access
+- DNS bind update access, as you are installing this on the bastion, any value for the key name and secret will work. One thing to remember is the trailing `dot` at the end of the key name (and it is meant to be called similar to the name.domain)
 ```
 dns_key_name = "ocp41.example.com."
 dns_key_algorithm = "hmac-md5"
 dns_key_secret = "mysecret"
 ```
 
-- Network information
+- Network information, basically lists the IP addresses for the machines, the default gateway, the netmask and upstream DNS server(s) to be used.
 ```
 bastion_ip_address = "172.16.54.160"
 bootstrap_ip_address = "172.16.54.171"
@@ -95,10 +95,9 @@ worker_ip_addresses = ["172.16.54.165" ]
 gateway = "172.16.255.250"
 netmask = "16"
 upstream_dns_servers = ["1.1.1.1"]
-dns_ip_address = 172.16.54.160
 ```
 
-- Cluster machines sizes
+- Cluster machines sizes and occurences, the recommended minimum values are 3 control plane nodes and 2 worker nodes.
 ```
 control_plane = {
     count = "1"
@@ -143,4 +142,6 @@ To run the deployment (once the variables are configured), simply run the follow
 
 #### Done
 
+## Additional changes
 
+If you must modify the version of the OpenShift 4 installer and other options in installing OpenShift 4, all of these are stored in `ocp4.tf` file. 

@@ -90,7 +90,7 @@ locals {
   bind_ip = local.bastion_ip
 
   # assume the default reverse zone is a Class C
-  default_reverse_zone = "${format("%s.in-addr.arpa", join(".", reverse(slice(split(".", var.dns_ip_address), 0, 3))))}"
+  default_reverse_zone = "${format("%s.in-addr.arpa", join(".", reverse(slice(split(".", var.bastion_ip_address), 0, 3))))}"
 
   reverse_zone = local.default_reverse_zone
   forward_zone = "${var.name}.${var.domain}"
@@ -232,7 +232,7 @@ $TTL 86400
               604800      ; expire after 1 week
               86400 )     ; minimum TTL of 1 day
           IN  NS  ns.${local.forward_zone}.
-ns        IN  A   ${var.dns_ip_address}
+ns        IN  A   ${var.bastion_ip_address}
 EOF
 }
 
@@ -250,7 +250,7 @@ $TTL 86400
 ;
 @  NS   ns.${local.forward_zone}.
 ;
-${element(split(".", var.dns_ip_address), 3)}   IN  PTR  ns.${local.forward_zone}.
+${element(split(".", var.bastion_ip_address), 3)}   IN  PTR  ns.${local.forward_zone}.
 
 EOF
 }
