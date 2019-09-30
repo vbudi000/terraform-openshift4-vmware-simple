@@ -174,6 +174,7 @@ resource "null_resource" "patch_registry_storage" {
 
   provisioner "remote-exec" {
     inline = [
+      "sleep 60",
       "echo \"/usr/local/bin/oc --kubeconfig=/var/www/html/auth/kubeconfig get configs.imageregistry.operator.openshift.io cluster\" > /tmp/check.sh",
       "chmod u+x /tmp/check.sh",
       "while [ ! /tmp/check.sh ]; do sleep 1; done",
