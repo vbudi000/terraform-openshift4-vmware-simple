@@ -12,7 +12,7 @@ locals {
     zone_name               = "${lower(var.name)}.${var.domain}."
 
     node_ips = compact(concat(
-        var.bootstrap_ip_address,
+        list(var.bootstrap_ip_address),
         var.control_plane_ip_addresses,
         var.worker_ip_addresses,
     ))
@@ -59,7 +59,7 @@ resource "dns_a_record_set" "node_a_record" {
 resource "dns_ptr_record" "node_ptr_record" {
   count = "${var.control_plane["count"] + var.worker["count"] + 1}"
 
-  zone = "${local.zone_name}"
+  zone = "${format("%s.in-addr.arpa.", join(".", reverse(slice(split(".", element(local.node_ips, count.index)), 0, 3))))}"
   name = "${element(split(".", element(local.node_ips, count.index)), 3)}"
   ptr = "${element(local.node_hostnames, count.index)}.${local.zone_name}"
 
@@ -69,7 +69,7 @@ resource "dns_ptr_record" "node_ptr_record" {
 resource "dns_a_record_set" "other_a_record" {
   count = "${var.control_plane["count"] + 3}"
 
-  zone = "${format("%s.in-addr.arpa.", join(".", reverse(slice(split(".", element(local.node_ips, count.index)), 0, 3))))}"
+  zone = "${local.zone_name}"
   name = "${replace(element(keys(local.a_records), count.index), replace(".${local.zone_name}", "/\\.$/", ""), "")}"
 
   addresses = ["${element(values(local.a_records), count.index)}"]

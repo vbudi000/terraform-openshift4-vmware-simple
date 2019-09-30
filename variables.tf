@@ -180,7 +180,7 @@ variable "dns_key_algorithm" {
 }
 
 variable "dns_key_secret" {
-  default = ""
+  default = "mxyzptlk"
 }
 
 variable "dns_record_ttl" {
