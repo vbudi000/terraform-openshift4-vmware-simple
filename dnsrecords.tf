@@ -18,7 +18,7 @@ locals {
     ))
 
     node_hostnames = compact(concat(
-        "${lower(var.name)}-bootstrap.${lower(var.name)}.${var.domain}",
+        list("${lower(var.name)}-bootstrap.${lower(var.name)}.${var.domain}"),
         formatlist("%v.%v", data.template_file.control_plane_hostname_a.*.rendered, var.domain),
         formatlist("%v.%v", data.template_file.worker_hostname_a.*.rendered, var.domain),
     ))
@@ -69,8 +69,8 @@ resource "dns_ptr_record" "node_ptr_record" {
 resource "dns_a_record_set" "other_a_record" {
   count = "${var.control_plane["count"] + 3}"
 
-  zone = "${format("%s.in-addr.arpa.", join(".", reverse(slice(split(".", element(var.node_ips, count.index)), 0, 3))))}"
-  name = "${replace(element(keys(var.a_records), count.index), replace(".${local.zone_name}", "/\\.$/", ""), "")}"
+  zone = "${format("%s.in-addr.arpa.", join(".", reverse(slice(split(".", element(local.node_ips, count.index)), 0, 3))))}"
+  name = "${replace(element(keys(local.a_records), count.index), replace(".${local.zone_name}", "/\\.$/", ""), "")}"
 
   addresses = ["${element(values(local.a_records), count.index)}"]
   ttl = "${local.ttl}"
@@ -82,7 +82,7 @@ resource "dns_srv_record_set" "srv_record" {
   zone = "${local.zone_name}"
 
   # in case the caller passes fqdn, drop the zone name as we don't need it
-  name = "${replace(element(var.srv_records, count.index), replace(".${local.zone_name}", "/\\.$/", ""), "")}"
+  name = "${replace(element(local.srv_records, count.index), replace(".${local.zone_name}", "/\\.$/", ""), "")}"
 
   dynamic "srv" {
     for_each = matchkeys(
