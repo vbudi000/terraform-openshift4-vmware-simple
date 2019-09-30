@@ -139,7 +139,8 @@ resource "null_resource" "wait_for_bootstrap_complete" {
     "vsphere_virtual_machine.control_plane",
     "vsphere_virtual_machine.control_plane_ds_cluster",
     "null_resource.generate_ignition_config",
-    "null_resource.openshift_installer"
+    "null_resource.openshift_installer",
+    "null_resource.dns_records_done"
   ]
 
   connection {

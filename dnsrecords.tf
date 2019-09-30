@@ -99,3 +99,13 @@ resource "dns_srv_record_set" "srv_record" {
   }
 }
 
+resource "null_resource" "dns_records_done" {
+
+  depends_on = [
+    "dns_a_record_set"."node_a_record",
+    "dns_a_record_set"."other_a_record",
+    "dns_ptr_record"."node_ptr_record",
+    "dns_srv_record_set"."srv_record",
+  ]
+
+}
