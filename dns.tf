@@ -56,9 +56,7 @@ resource "null_resource" "install_bind" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo yum install -y bind bind-utils",
-      "sudo systemctl enable named",
-      "sudo systemctl start named"
+      "sudo yum install -y bind bind-utils"
     ]
   }
 }
